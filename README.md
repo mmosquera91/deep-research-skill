@@ -4,9 +4,9 @@
 
 ### *Multi-source research engine with persistent memory for Hermes Agent*
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg?style=for-the-badge)](https://github.com/mmosquera91/deep-research-skill/releases)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg?style=for-the-badge)](https://github.com/mmosquera91/deep-research-skill/releases)
 [![Python](https://img.shields.io/badge/python-3.11+-green.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-8%2F8%20passing-success.svg?style=for-the-badge)](./tests)
+[![Tests](https://img.shields.io/badge/tests-17%2F17%20passing-success.svg?style=for-the-badge)](./tests)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 [![Hermes](https://img.shields.io/badge/Hermes-Agent-purple.svg?style=for-the-badge)](https://hermes-agent.nousresearch.com/)
 
@@ -85,6 +85,22 @@ hermes skills install git+https://github.com/mmosquera91/deep-research-skill
 git clone https://github.com/mmosquera91/deep-research-skill.git
 cp -r deep-research-skill ~/.hermes/skills/
 ```
+
+### Updating
+
+To update to the latest version:
+
+```bash
+# Remove old version and reinstall
+rm -rf ~/.hermes/skills/deep-research
+hermes skills install git+https://github.com/mmosquera91/deep-research-skill
+
+# Or if you cloned manually
+cd ~/.hermes/skills/deep-research
+git pull origin main
+```
+
+> **Note:** Your research database (`~/.local/share/deep-research/research.db`) is **not affected** by updates — all your findings are preserved.
 
 ### One-Shot Research
 
