@@ -82,7 +82,10 @@ cronjob create "0 9 * * *" "Run daily research briefing"
 ### Installation
 
 ```bash
-# Install from GitHub
+# Install from GitHub (quickest)
+hermes skills install mmosquera91/deep-research-skill
+
+# Or using full URL
 hermes skills install git+https://github.com/mmosquera91/deep-research-skill
 
 # Or manually clone
