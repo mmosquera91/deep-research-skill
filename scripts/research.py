@@ -41,16 +41,12 @@ class ResearchOrchestrator:
             if not source:
                 continue
             
-            if source_name == "reddit":
-                query = source._build_query(topic, days)
-            elif source_name == "youtube":
-                query = source._build_query(topic)
-            else:
-                query = topic
+            # Use get_search_params for consistent query building with date filters
+            params = source.get_search_params(topic, days)
             
             findings.append({
                 "source": source_name,
-                "query": query,
+                "query": params["query"],
                 "status": "pending"
             })
         

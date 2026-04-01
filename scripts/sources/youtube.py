@@ -1,14 +1,28 @@
 from .base import BaseSource, SourceResult
 from typing import List
+from datetime import datetime, timedelta
 
 class YouTubeSource(BaseSource):
     """YouTube search and transcript extraction."""
     
     name = "youtube"
     
-    def _build_query(self, query: str) -> str:
-        """Build YouTube search query."""
-        return f"{query} site:youtube.com"
+    def _build_query(self, query: str, days: int = 30) -> str:
+        """Build YouTube search query with date filter.
+        
+        Uses 'after:' operator for recency filtering.
+        """
+        since_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        return f"{query} site:youtube.com after:{since_date}"
+    
+    def get_search_params(self, query: str, days: int = 30, limit: int = 10) -> dict:
+        """Return search parameters including date-filtered query."""
+        return {
+            "query": self._build_query(query, days),
+            "days": days,
+            "limit": limit,
+            "source_name": self.name
+        }
     
     def search(self, query: str, days: int = 30, limit: int = 10) -> List[SourceResult]:
         """Returns search parameters for orchestrator."""

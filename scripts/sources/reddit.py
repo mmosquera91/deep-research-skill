@@ -1,5 +1,6 @@
 from .base import BaseSource, SourceResult
 from typing import List, Optional
+from datetime import datetime, timedelta
 import re
 
 class RedditSource(BaseSource):
@@ -7,9 +8,22 @@ class RedditSource(BaseSource):
     
     name = "reddit"
     
-    def _build_query(self, query: str, days: int) -> str:
-        """Build search query with Reddit filter."""
-        return f"{query} site:reddit.com"
+    def _build_query(self, query: str, days: int = 30) -> str:
+        """Build search query with Reddit filter and date range.
+        
+        Uses 'after:' operator for recency filtering.
+        """
+        since_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        return f"{query} site:reddit.com after:{since_date}"
+    
+    def get_search_params(self, query: str, days: int = 30, limit: int = 10) -> dict:
+        """Return search parameters including date-filtered query."""
+        return {
+            "query": self._build_query(query, days),
+            "days": days,
+            "limit": limit,
+            "source_name": self.name
+        }
     
     def search(self, query: str, days: int = 30, limit: int = 10) -> List[SourceResult]:
         """Returns search query for Hermes to execute."""

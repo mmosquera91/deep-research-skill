@@ -3,7 +3,8 @@ Synthesis of research findings into reports.
 This module provides prompts/templates for LLM synthesis.
 """
 
-from typing import List, Dict
+from typing import List, Dict, Optional
+from datetime import datetime
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -13,8 +14,72 @@ from storage import ResearchFinding
 class SynthesisEngine:
     """Generates synthesis prompts for LLM."""
     
+    def _calculate_metadata(self, findings: List[ResearchFinding]) -> dict:
+        """Calculate metadata statistics for findings."""
+        if not findings:
+            return {"total": 0, "by_source": {}, "date_range": None, "with_score": 0}
+        
+        # Count by source
+        by_source: Dict[str, int] = {}
+        for f in findings:
+            by_source[f.source] = by_source.get(f.source, 0) + 1
+        
+        # Count findings with score
+        with_score = sum(1 for f in findings if f.score is not None)
+        
+        # Date range (if published_at available)
+        dates = [f.published_at for f in findings if f.published_at]
+        date_range = None
+        if dates:
+            try:
+                parsed_dates = []
+                for d in dates:
+                    if isinstance(d, str):
+                        try:
+                            parsed_dates.append(datetime.fromisoformat(d.replace('Z', '+00:00')))
+                        except:
+                            continue
+                    elif isinstance(d, datetime):
+                        parsed_dates.append(d)
+                
+                if parsed_dates:
+                    date_range = {
+                        "oldest": min(parsed_dates).strftime("%Y-%m-%d"),
+                        "newest": max(parsed_dates).strftime("%Y-%m-%d")
+                    }
+            except:
+                pass
+        
+        return {
+            "total": len(findings),
+            "by_source": by_source,
+            "date_range": date_range,
+            "with_score": with_score
+        }
+    
+    def _format_source_distribution(self, by_source: Dict[str, int]) -> str:
+        """Format source distribution as ASCII bar chart."""
+        if not by_source:
+            return "  (No data)"
+        
+        total = sum(by_source.values())
+        max_val = max(by_source.values())
+        max_label_len = max(len(s) for s in by_source.keys())
+        
+        lines = []
+        for source, count in sorted(by_source.items(), key=lambda x: x[1], reverse=True):
+            bar_len = int((count / max_val) * 20) if max_val > 0 else 0
+            bar = "█" * bar_len
+            pct = (count / total) * 100
+            lines.append(f"  {source:<{max_label_len}} │{bar:<20}│ {count:>3} ({pct:>4.1f}%)")
+        
+        return "\n".join(lines)
+    
     def generate_prompt(self, topic: str, findings: List[ResearchFinding]) -> str:
-        """Generate synthesis prompt for findings."""
+        """Generate synthesis prompt for findings with rich metadata."""
+        
+        # Calculate metadata
+        meta = self._calculate_metadata(findings)
         
         # Group by source
         by_source: Dict[str, List[ResearchFinding]] = {}
@@ -31,7 +96,21 @@ class SynthesisEngine:
                     findings_text.append(f"  Score: {item.score}")
                 findings_text.append(f"  {item.content[:200]}...")
         
+        # Build metadata section
+        metadata_text = f"""📊 **Total Findings:** {meta['total']}
+📈 **With Engagement Score:** {meta['with_score']} ({meta['with_score']/meta['total']*100:.1f}%)
+"""
+        if meta['date_range']:
+            metadata_text += f"📅 **Date Range:** {meta['date_range']['oldest']} → {meta['date_range']['newest']}\n"
+        
+        source_dist = self._format_source_distribution(meta['by_source'])
+        
         prompt = f"""You are a research analyst synthesizing findings on: **{topic}**
+
+## Metadata
+{metadata_text}
+## Source Distribution
+{source_dist}
 
 ## Raw Findings ({len(findings)} total)
 {chr(10).join(findings_text)}
