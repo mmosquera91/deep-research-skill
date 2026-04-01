@@ -40,10 +40,6 @@ Traditional search is **stateless**. You search, see results, and they're gone. 
 
 ## ✨ Features
 
-<p align="center">
-  <img width="800" alt="deep-research-overview" src="https://user-images.githubusercontent.com/placeholder/deep-research-banner.png">
-</p>
-
 ### 🔍 Multi-Source Intelligence
 - **Reddit** — Real developer opinions and discussions
 - **YouTube** — Tutorial and review content with transcript extraction
@@ -82,10 +78,7 @@ cronjob create "0 9 * * *" "Run daily research briefing"
 ### Installation
 
 ```bash
-# Install from GitHub (quickest)
-hermes skills install mmosquera91/deep-research-skill
-
-# Or using full URL
+# Install from GitHub
 hermes skills install git+https://github.com/mmosquera91/deep-research-skill
 
 # Or manually clone
