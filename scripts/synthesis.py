@@ -79,35 +79,56 @@ class SynthesisEngine:
 
     def generate_prompt(self, topic: str, findings: List[ResearchFinding]) -> str:
         """Generate synthesis prompt for findings with rich metadata."""
-        # Calculate metadata first
-        meta = self._calculate_metadata(findings)
 
-        print(
-            f"[deep-research] Generating synthesis prompt for topic='{topic}' "
-            f"with {meta['total']} findings; by_source={meta['by_source']}",
-            file=sys.stderr,
-        )
+        # Calculate metadata
+        meta = self._calculate_metadata(findings)
 
         # Group by source
         by_source: Dict[str, List[ResearchFinding]] = {}
         for f in findings:
             by_source.setdefault(f.source, []).append(f)
 
-        # Build findings summary
+        # Build findings summary by source
         findings_text = []
+        key_sources = []
         for source, items in by_source.items():
             findings_text.append(f"\n## {source.upper()}")
             for item in items[:5]:  # Top 5 per source
                 findings_text.append(f"- [{item.title}]({item.url})")
+                # recopila URLs para sección Key Sources
+                key_sources.append((item.title, item.url))
                 if item.score:
                     findings_text.append(f" Score: {item.score}")
                 findings_text.append(f" {item.content[:200]}...")
+
+        # Limita Key Sources a 5 únicos
+        seen_urls = set()
+        key_sources_dedup = []
+        for title, url in key_sources:
+            if url not in seen_urls:
+                seen_urls.add(url)
+                key_sources_dedup.append((title, url))
+            if len(key_sources_dedup) >= 5:
+                break
 
         # Build metadata section
         if meta["total"] > 0:
             score_pct = (meta["with_score"] / meta["total"]) * 100
         else:
             score_pct = 0.0
+
+        # Frase de apertura basada en la DB
+        if meta["date_range"]:
+            intro_line = (
+                f"Based strictly on {meta['total']} findings stored in the deep-research "
+                f"SQLite database for this topic between {meta['date_range']['oldest']} "
+                f"and {meta['date_range']['newest']}, synthesize the evidence below."
+            )
+        else:
+            intro_line = (
+                f"Based strictly on {meta['total']} findings stored in the deep-research "
+                f"SQLite database for this topic, synthesize the evidence below."
+            )
 
         metadata_text = (
             f"📊 **Total Findings:** {meta['total']}\n"
@@ -121,18 +142,36 @@ class SynthesisEngine:
 
         source_dist = self._format_source_distribution(meta["by_source"])
 
+        # Sección de Key Sources
+        if key_sources_dedup:
+            key_sources_text = "\n".join(
+                f"- [{title}]({url})" for title, url in key_sources_dedup
+            )
+        else:
+            key_sources_text = "_No specific sources available_"
+
         prompt = f"""You are a research analyst synthesizing findings on: **{topic}**
+
+{intro_line}
 
 ## Metadata
 {metadata_text}
 ## Source Distribution
 {source_dist}
 
+## Key Sources (Top references from the findings)
+{key_sources_text}
+
 ## Raw Findings ({len(findings)} total)
 {chr(10).join(findings_text)}
 
 ## Your Task
-Synthesize these findings into a structured report:
+Synthesize these findings into a structured report. Follow these rules carefully:
+
+1. Base your claims **only** on the Raw Findings above. Do not introduce external facts that are not supported by these findings.
+2. If you need to add general background context beyond the findings, label it explicitly as:
+   - **Background (speculative):** <your extra context>
+3. Prioritize patterns, events, and opinions that appear in multiple findings or sources.
 
 ### 1. Key Patterns
 What are the main themes or patterns across sources?
