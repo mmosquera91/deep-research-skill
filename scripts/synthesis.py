@@ -95,7 +95,7 @@ class SynthesisEngine:
             findings_text.append(f"\n## {source.upper()}")
             for item in items[:5]:  # Top 5 per source
                 findings_text.append(f"- [{item.title}]({item.url})")
-                # recopila URLs para sección Key Sources
+                # recopila títulos+URLs para sección Key Sources
                 key_sources.append((item.title, item.url))
                 if item.score:
                     findings_text.append(f" Score: {item.score}")
@@ -112,27 +112,27 @@ class SynthesisEngine:
                 break
 
         # Build metadata section
-        if meta["total"] > 0:
-            score_pct = (meta["with_score"] / meta["total"]) * 100
-        else:
-            score_pct = 0.0
+        total = meta["total"]
+        with_score = meta["with_score"]
 
-        # Frase de apertura basada en la DB
+        score_pct = (with_score / total * 100) if total > 0 else 0.0
+
+        # Frase de apertura basada exactamente en meta['total'] y rango de fechas
         if meta["date_range"]:
             intro_line = (
-                f"Based strictly on {meta['total']} findings stored in the deep-research "
+                f"Based strictly on **{total} findings** stored in the deep-research "
                 f"SQLite database for this topic between {meta['date_range']['oldest']} "
                 f"and {meta['date_range']['newest']}, synthesize the evidence below."
             )
         else:
             intro_line = (
-                f"Based strictly on {meta['total']} findings stored in the deep-research "
+                f"Based strictly on **{total} findings** stored in the deep-research "
                 f"SQLite database for this topic, synthesize the evidence below."
             )
 
         metadata_text = (
-            f"📊 **Total Findings:** {meta['total']}\n"
-            f"📈 **With Engagement Score:** {meta['with_score']} ({score_pct:.1f}%)\n"
+            f"📊 **Total Findings:** {total}\n"
+            f"📈 **With Engagement Score:** {with_score} ({score_pct:.1f}%)\n"
         )
         if meta["date_range"]:
             metadata_text += (
@@ -147,8 +147,13 @@ class SynthesisEngine:
             key_sources_text = "\n".join(
                 f"- [{title}]({url})" for title, url in key_sources_dedup
             )
+            # Lista de títulos sencilla para referenciar en el texto
+            key_source_titles = ", ".join(
+                f"“{title}”" for title, _ in key_sources_dedup
+            )
         else:
             key_sources_text = "_No specific sources available_"
+            key_source_titles = ""
 
         prompt = f"""You are a research analyst synthesizing findings on: **{topic}**
 
@@ -169,9 +174,16 @@ class SynthesisEngine:
 Synthesize these findings into a structured report. Follow these rules carefully:
 
 1. Base your claims **only** on the Raw Findings above. Do not introduce external facts that are not supported by these findings.
-2. If you need to add general background context beyond the findings, label it explicitly as:
+2. When you mention a **concrete numeric detail** (prices, RAM, GitHub stars, dates, percentages),
+   explicitly tag it with its source, for example:
+   - "Jellyfin uses ~300MB RAM (from one of the Key Sources above)."
+   - "Plex Pass costs $6.99/month (from a blog comparison in {key_source_titles})."
+3. If you are **not sure** about an exact number from the findings:
+   - Prefer qualitative language ("higher", "lower", "similar") or rough ranges ("≈", "~"),
+   - or omit the number entirely instead of inventing it.
+4. If you need to add general background context beyond the findings, label it explicitly as:
    - **Background (speculative):** <your extra context>
-3. Prioritize patterns, events, and opinions that appear in multiple findings or sources.
+5. Prioritize patterns, events, and opinions that appear in multiple findings or sources.
 
 ### 1. Key Patterns
 What are the main themes or patterns across sources?
